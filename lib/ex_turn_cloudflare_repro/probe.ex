@@ -21,8 +21,12 @@ defmodule ExTurnCloudflareRepro.Probe do
   def run(iteration, ice_servers, port_range) do
     t0 = System.monotonic_time(:millisecond)
 
+    # start (not start_link): PeerConnection.close/1 in ex_webrtc 0.16 +
+    # ex_dtls 0.18 crashes with `{:unifex_parse_arg, {:state, ':state'}}`
+    # when the DTLS transport has never negotiated. We don't want that
+    # crash to tear down our own process, so avoid the link.
     {:ok, pc} =
-      PeerConnection.start_link(
+      PeerConnection.start(
         ice_servers: to_atom_keys(ice_servers),
         ice_port_range: port_range
       )
@@ -35,7 +39,7 @@ defmodule ExTurnCloudflareRepro.Probe do
 
     {completed?, relay?} = wait_for_gathering(pc, false)
 
-    :ok = PeerConnection.close(pc)
+    shutdown(pc)
 
     %{
       iteration: iteration,
@@ -57,6 +61,25 @@ defmodule ExTurnCloudflareRepro.Probe do
         wait_for_gathering(pc, relay?)
     after
       @gather_timeout_ms -> {false, relay?}
+    end
+  end
+
+  defp shutdown(pc) do
+    ref = Process.monitor(pc)
+
+    try do
+      _ = PeerConnection.close(pc)
+    catch
+      _, _ -> :ok
+    end
+
+    receive do
+      {:DOWN, ^ref, :process, ^pc, _} -> :ok
+    after
+      1_000 ->
+        Process.demonitor(ref, [:flush])
+        if Process.alive?(pc), do: Process.exit(pc, :kill)
+        :ok
     end
   end
 
