@@ -17,6 +17,8 @@ defmodule ExTurnCloudflareRepro do
   @default_iterations 20
   @default_port_range_start 50_000
   @default_port_range_size 5
+  @default_ttl 86_400
+  @default_delay_ms 0
 
   @spec run() :: no_return()
   def run do
@@ -24,19 +26,24 @@ defmodule ExTurnCloudflareRepro do
 
     Logger.info(
       "[repro] starting server=#{opts[:server]} iterations=#{opts[:iterations]} " <>
-        "ports=#{inspect(opts[:port_range])}"
+        "ports=#{inspect(opts[:port_range])} ttl=#{opts[:ttl]} delay_ms=#{opts[:delay_ms]}"
     )
 
     ice_servers =
       case opts[:server] do
-        :cloudflare -> fetch_cloudflare!()
+        :cloudflare -> fetch_cloudflare!(opts[:ttl])
         :coturn -> fetch_coturn!()
       end
 
     filtered = IceFilter.filter_turn_udp_3478(ice_servers)
     Logger.info("[repro] filtered servers: #{inspect(filtered)}")
 
-    result = Loop.run(filtered, iterations: opts[:iterations], port_range: opts[:port_range])
+    result =
+      Loop.run(filtered,
+        iterations: opts[:iterations],
+        port_range: opts[:port_range],
+        delay_ms: opts[:delay_ms]
+      )
 
     report(result)
 
@@ -57,7 +64,9 @@ defmodule ExTurnCloudflareRepro do
     [
       server: server,
       iterations: int_env("REPRO_ITERATIONS", @default_iterations),
-      port_range: port_start..(port_start + port_size - 1)
+      port_range: port_start..(port_start + port_size - 1),
+      ttl: int_env("REPRO_TTL", @default_ttl),
+      delay_ms: int_env("REPRO_DELAY_MS", @default_delay_ms)
     ]
   end
 
@@ -68,11 +77,11 @@ defmodule ExTurnCloudflareRepro do
     end
   end
 
-  defp fetch_cloudflare! do
+  defp fetch_cloudflare!(ttl) do
     id = System.fetch_env!("CF_TURN_APP_ID")
     token = System.fetch_env!("CF_TURN_APP_TOKEN")
 
-    case CloudflareClient.fetch_ice_servers(id, token) do
+    case CloudflareClient.fetch_ice_servers(id, token, ttl) do
       {:ok, servers} -> servers
       {:error, reason} -> raise "Cloudflare fetch failed: #{inspect(reason)}"
     end

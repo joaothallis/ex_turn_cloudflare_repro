@@ -8,8 +8,9 @@ defmodule ExTurnCloudflareRepro.CloudflareClient do
 
   @base_url "https://rtc.live.cloudflare.com"
 
-  @spec fetch_ice_servers(String.t(), String.t()) :: {:ok, [map()]} | {:error, term()}
-  def fetch_ice_servers(app_id, app_token) do
+  @spec fetch_ice_servers(String.t(), String.t(), pos_integer()) ::
+          {:ok, [map()]} | {:error, term()}
+  def fetch_ice_servers(app_id, app_token, ttl \\ 86_400) do
     url = "#{@base_url}/v1/turn/keys/#{app_id}/credentials/generate-ice-servers"
 
     Req.post(
@@ -18,7 +19,7 @@ defmodule ExTurnCloudflareRepro.CloudflareClient do
         "content-type" => ["application/json"],
         "authorization" => "Bearer #{app_token}"
       },
-      json: %{"ttl" => 86_400}
+      json: %{"ttl" => ttl}
     )
     |> parse()
   end

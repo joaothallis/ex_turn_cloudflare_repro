@@ -18,6 +18,7 @@ defmodule ExTurnCloudflareRepro.Loop do
   def run(ice_servers, opts) do
     n = Keyword.fetch!(opts, :iterations)
     port_range = Keyword.fetch!(opts, :port_range)
+    delay_ms = Keyword.get(opts, :delay_ms, 0)
 
     :ok = LogHandler.install(self())
 
@@ -25,6 +26,7 @@ defmodule ExTurnCloudflareRepro.Loop do
       try do
         Enum.map(1..n, fn i ->
           :ok = LogHandler.set_iteration(i)
+          if i > 1 and delay_ms > 0, do: Process.sleep(delay_ms)
           outcome = Probe.run(i, ice_servers, port_range)
 
           Logger.info(
