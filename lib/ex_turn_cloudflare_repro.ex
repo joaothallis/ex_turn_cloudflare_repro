@@ -93,7 +93,9 @@ defmodule ExTurnCloudflareRepro do
     relay = Enum.count(result.iterations, & &1.relay_candidate?)
     gathered = Enum.count(result.iterations, & &1.gathering_completed?)
 
-    Logger.info(
+    # IO.puts rather than Logger.info so the summary reliably flushes before
+    # the immediately-following System.halt/1 tears down the runtime.
+    IO.puts(
       "[repro] result: iterations=#{total} relay=#{relay} gathered=#{gathered} " <>
         "seen_437?=#{result.seen_437?} first_437_iteration=#{inspect(result.first_437_iteration)}"
     )

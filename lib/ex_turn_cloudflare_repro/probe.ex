@@ -24,9 +24,7 @@ defmodule ExTurnCloudflareRepro.Probe do
     {:ok, pc} =
       PeerConnection.start_link(
         ice_servers: to_atom_keys(ice_servers),
-        ice_port_range: port_range,
-        audio_codecs: :all,
-        video_codecs: []
+        ice_port_range: port_range
       )
 
     audio = MediaStreamTrack.new(:audio, ["audio_stream"])
