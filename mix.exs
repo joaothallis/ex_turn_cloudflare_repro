@@ -17,10 +17,8 @@ defmodule ExTurnCloudflareRepro.MixProject do
 
   defp deps do
     [
-      {:ex_webrtc, "~> 0.14.0"},
-      # ex_webrtc 0.14.0 declares `ex_ice ~> 0.12.0`, but 0.12.x has a race
-      # condition fixed in 0.14.0. Override to pick up the fix.
-      {:ex_ice, "== 0.14.0", override: true},
+      {:ex_webrtc, "~> 0.16.0"},
+      {:ex_ice, "~> 0.15.0"},
       {:ex_turn, "~> 0.2.1"},
       {:req, "~> 0.5"}
     ]
